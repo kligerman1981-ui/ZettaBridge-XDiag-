@@ -67,21 +67,22 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p = Path("core/src/initial_stack.cpp")
           s = p.read_text()
-          old = '#include <sys/random.h>'
-          assert old in s
-          s = s.replace(old, '#include <cstdio>')
-          old = '''    if (getrandom(random_bytes, sizeof random_bytes, 0) != sizeof random_bytes) {
-          for (std::size_t i = 0; i < sizeof random_bytes; ++i) random_bytes[i] = static_cast<std::uint8_t>(i * 37 + 11);
-          }'''
-          new = '''    std::FILE* random_source = std::fopen("/dev/urandom", "rb");
-          if (!random_source) return 0;
-          const std::size_t random_count = std::fread(random_bytes, 1, sizeof random_bytes, random_source);
-          std::fclose(random_source);
-          if (random_count != sizeof random_bytes) return 0;'''
-          assert old in s, "upstream random initialization changed"
-          p.write_text(s.replace(old, new))
+          assert '#include <sys/random.h>' in s, "getrandom header not found"
+          pattern = r'(?m)^    if \(getrandom\(random_bytes, sizeof random_bytes, 0\) != sizeof random_bytes\) \{\n(?:.*\n)*?    \}\n'
+          replacement = (
+              '    std::FILE* source = std::fopen("/dev/urandom", "rb");\n'
+              '    if (!source) return 0;\n'
+              '    const auto count = std::fread(random_bytes, 1, sizeof random_bytes, source);\n'
+              '    std::fclose(source);\n'
+              '    if (count != sizeof random_bytes) return 0;\n'
+          )
+          s, count = re.subn(pattern, lambda _: replacement, s)
+          assert count == 1, f"expected one getrandom block, found {count}"
+          s = s.replace('#include <sys/random.h>', '#include <cstdio>')
+          p.write_text(s)
           PY
       - name: Build native translator and launcher
         run: |
