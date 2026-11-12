@@ -32,7 +32,8 @@ export NDK="$NDK" NDK_HOST="$HOST_TAG"
 cmake -S "$ROOT" -B "$ROOT/build/android-arm64" -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
   -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 \
-  -DCMAKE_BUILD_TYPE=Release -DZB_BUILD_TESTS=OFF
+  -DCMAKE_BUILD_TYPE=Release -DZB_BUILD_TESTS=OFF \
+  -DBoost_INCLUDE_DIR=/usr/include
 cmake --build "$ROOT/build/android-arm64" --target zbridge zbproxy -j "${JOBS:-2}"
 "$ROOT/tools/build_guest.sh"
 "$ROOT/tools/make_launcher_bundle.sh"
