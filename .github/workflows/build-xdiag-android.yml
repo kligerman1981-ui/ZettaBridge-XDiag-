@@ -1,0 +1,42 @@
+name: Build X-DIAG Android APK
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Verify project source
+        run: |
+          test -f CMakeLists.txt
+          test -f third_party/dynarmic/CMakeLists.txt
+          test -x android/launcher/gradlew
+          test -f tools/build_xdiag_android.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y ninja-build cmake e2fsprogs unzip curl python3
+      - name: Install SDK and NDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;30.0.16248370'
+      - name: Prepare guest runtime
+        run: bash tools/extract_sysroot.sh
+      - name: Build native ARM64 runtime and APK
+        run: |
+          export ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/30.0.16248370"
+          test -f "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+          bash tools/build_xdiag_android.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: XDiagCompat-android16-debug-apk
+          path: android/launcher/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
