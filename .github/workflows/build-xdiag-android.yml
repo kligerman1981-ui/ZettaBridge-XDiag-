@@ -62,6 +62,27 @@ jobs:
           test -f /tmp/boost-android/boost/icl/interval_map.hpp
       - name: Prepare 32-bit Android guest sysroot
         run: bash tools/extract_sysroot.sh
+      - name: Fix Android bionic random initialization
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("core/src/initial_stack.cpp")
+          s = p.read_text()
+          old = '#include <sys/random.h>'
+          assert old in s
+          s = s.replace(old, '#include <cstdio>')
+          old = '''    if (getrandom(random_bytes, sizeof random_bytes, 0) != sizeof random_bytes) {
+        for (std::size_t i = 0; i < sizeof random_bytes; ++i) random_bytes[i] = static_cast<std::uint8_t>(i * 37 + 11);
+    }'''
+          new = '''    std::FILE* random_source = std::fopen("/dev/urandom", "rb");
+    if (!random_source) return 0;
+    const std::size_t random_count = std::fread(random_bytes, 1, sizeof random_bytes, random_source);
+    std::fclose(random_source);
+    if (random_count != sizeof random_bytes) return 0;'''
+          assert old in s, "upstream random initialization changed"
+          p.write_text(s.replace(old, new))
+          PY
       - name: Build native translator and launcher
         run: |
           export ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/30.0.16248370"
