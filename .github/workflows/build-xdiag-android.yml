@@ -1,6 +1,12 @@
 name: Build X-DIAG Android APK
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-xdiag-android.yml'
+      - 'tools/**'
+      - 'CMakeLists.txt'
 permissions:
   contents: read
 jobs:
@@ -9,28 +15,35 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Verify project source
+      - name: Obtain upstream ZettaBridge sources without republishing them
+        shell: bash
         run: |
+          set -euo pipefail
+          git clone --depth=1 https://github.com/ZailoxTT/ZettaBridge.git /tmp/zetta-upstream
+          # Retain project-specific build files from this repository.
+          rsync -a --ignore-existing --exclude='.git' /tmp/zetta-upstream/ ./
+          if [[ ! -f third_party/dynarmic/CMakeLists.txt ]]; then
+            git clone --recursive --depth=1 https://github.com/Vita3K/dynarmic.git third_party/dynarmic
+          fi
           test -f CMakeLists.txt
           test -f third_party/dynarmic/CMakeLists.txt
-          test -x android/launcher/gradlew
           test -f tools/build_xdiag_android.sh
+          test -f tools/extract_sysroot.sh
+          test -d android/launcher
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
-      - name: Install build dependencies
+      - name: Install native build tools
         run: sudo apt-get update && sudo apt-get install -y ninja-build cmake e2fsprogs unzip curl python3
-      - name: Install SDK and NDK
+      - name: Install Android SDK and NDK
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;30.0.16248370'
-      - name: Prepare guest runtime
+      - name: Prepare 32-bit Android guest sysroot
         run: bash tools/extract_sysroot.sh
-      - name: Build native ARM64 runtime and APK
+      - name: Build native translator and launcher
         run: |
           export ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/30.0.16248370"
           test -f "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
