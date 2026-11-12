@@ -31,7 +31,7 @@ if [[ ! -x "$ROOT/android/launcher/gradlew" ]]; then echo 'Gradle wrapper missin
 export NDK="$NDK" NDK_HOST="$HOST_TAG"
 cmake -S "$ROOT" -B "$ROOT/build/android-arm64" -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
-  -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 \
+  -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-30 \
   -DCMAKE_BUILD_TYPE=Release -DZB_BUILD_TESTS=OFF \
   -DBoost_INCLUDE_DIR=/tmp/boost-android \
   -DCMAKE_CXX_FLAGS=-I/tmp/boost-android
