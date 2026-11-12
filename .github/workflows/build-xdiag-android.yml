@@ -30,18 +30,19 @@ jobs:
           test -f tools/build_xdiag_android.sh
           test -f tools/extract_sysroot.sh
           test -d android/launcher
-      - name: Apply compatibility target for legacy X-DIAG WorkManager PendingIntent
+      - name: Apply legacy X-DIAG compatibility target
         shell: bash
         run: |
           set -euo pipefail
-          gradle_file=android/launcher/app/build.gradle.kts
-          test -f "$gradle_file"
           python3 - <<'PY'
           from pathlib import Path
-          import re
           p = Path("android/launcher/app/build.gradle.kts")
           s = p.read_text()
-          s, n = re.subn(r'(?m)^(\s*)targetSdk\s*=\s*35\s*
+          old = "targetSdk = 35"
+          assert s.count(old) == 1, "expected exactly one targetSdk declaration"
+          p.write_text(s.replace(old, "targetSdk = 30"))
+          PY
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
