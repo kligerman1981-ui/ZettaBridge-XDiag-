@@ -54,6 +54,12 @@ jobs:
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;30.0.16248370'
+      - name: Stage portable Boost headers for Android NDK
+        run: |
+          test -f /usr/include/boost/icl/interval_map.hpp
+          mkdir -p /tmp/boost-android
+          cp -a /usr/include/boost /tmp/boost-android/
+          test -f /tmp/boost-android/boost/icl/interval_map.hpp
       - name: Prepare 32-bit Android guest sysroot
         run: bash tools/extract_sysroot.sh
       - name: Build native translator and launcher
